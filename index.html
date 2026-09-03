@@ -353,7 +353,7 @@
     </div>
     <h1>Today is <span class="hl editable" data-k="who" data-ph="name" contenteditable="true" spellcheck="false">Junei</span> Day</h1>
     <div class="subname">turning 23 ✦</div>
-    <p class="quote editable" data-k="tagline" data-ph="short quote" contenteditable="true" spellcheck="false">“still a work in progress, and that's the best part.”</p>
+    <p class="quote editable" data-k="tagline" data-ph="short quote" contenteditable="true" spellcheck="false">“twenty-three years in, still a little kid inside and still figuring out how to grow up — and honestly, that's the best part.”</p>
     <div class="emojis" aria-hidden="true"><span>🎂</span><span>🎈</span><span>🎀</span><span>💜</span><span>✨</span></div>
     <div class="cue"><span>scroll</span><svg viewBox="0 0 24 24"><path d="M12 20 3 9h18z"/></svg></div>
   </div>
@@ -535,9 +535,12 @@
   }).join('');
 
   document.querySelectorAll('.editable').forEach(function(el){
-    const saved = lsGet('t4:'+el.dataset.k);
-    if(saved !== null) el.textContent = saved;
-    el.addEventListener('input', function(){ lsSet('t4:'+el.dataset.k, el.textContent); });
+    const def = el.textContent;
+    const key = 't5:' + el.dataset.k;
+    let saved = null;
+    try{ saved = JSON.parse(lsGet(key)); }catch(e){}
+    if(saved && saved.d === def && typeof saved.v === 'string') el.textContent = saved.v;
+    el.addEventListener('input', function(){ lsSet(key, JSON.stringify({v:el.textContent, d:def})); });
     el.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } });
   });
 
