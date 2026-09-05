@@ -694,6 +694,9 @@
     ownSong = true;
     songLabel.textContent = name ? (name.length>12 ? name.slice(0,11)+'…' : name) : 'เพลงของเรา';
   }
+  audioEl.src = 'song.mp3';
+  ownSong = true;
+  songLabel.textContent = 'โตไปด้วยกัน';
   get('song').then(function(b){ if(b) loadSong(b, lsGet('songName')); });
   document.getElementById('songBtn').addEventListener('click', function(){ songPicker.value=''; songPicker.click(); });
   songPicker.addEventListener('change', function(){
@@ -709,9 +712,9 @@
 
   /* ---------- play + auto scroll ---------- */
   const stops = ['hero','story','wish'].map(function(id){ return document.getElementById(id); });
-  let timer=null, si=0;
+  let timer=null, si=0, playing=false;
   function stopAll(){
-    clearInterval(timer); timer=null;
+    clearInterval(timer); timer=null; playing=false;
     document.body.classList.remove('playing');
     disc.classList.remove('spin');
     audioEl.pause();
@@ -720,21 +723,22 @@
     playLabel.textContent='เล่นเพลง';
   }
   function startAll(){
+    playing = true;
     document.body.classList.add('playing');
     playPath.setAttribute('d', PAUSE_D);
     playLabel.textContent='หยุด';
     disc.classList.add('spin');
     si = 0;
     window.scrollTo({top:0, behavior:'smooth'});
-    if(ownSong){ audioEl.currentTime = 0; audioEl.play().catch(function(){}); }
+    if(ownSong){ audioEl.currentTime = 0; audioEl.play().catch(function(){ melodyStart(); }); }
     else { melodyStart(); }
     timer = setInterval(function(){
       si++;
-      if(si >= stops.length){ stopAll(); return; }
+      if(si >= stops.length){ clearInterval(timer); timer=null; return; }
       stops[si].scrollIntoView({behavior:'smooth', block:'start'});
-    }, 4600);
+    }, 5200);
   }
-  document.getElementById('playBtn').addEventListener('click', function(){ timer ? stopAll() : startAll(); });
+  document.getElementById('playBtn').addEventListener('click', function(){ playing ? stopAll() : startAll(); });
 
   /* ---------- nav + reveal ---------- */
   const links = Array.from(document.querySelectorAll('#nav a'));
