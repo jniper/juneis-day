@@ -602,37 +602,58 @@
   get('photo:avatar').then(function(x){ if(x) showPhoto(avatar,x); });
 
   /* ---------- built-in melody ---------- */
-  const ROOTS   = [57, 53, 60, 55];
-  const CHORDS  = [[60,64,69],[57,60,65],[60,64,67],[59,62,67]];
-  const MELODY  = [
-    [76,72,69,72, 76,79,76, 0],
-    [74,72,69,65, 69,72,69, 0],
-    [72,76,79,76, 72,74,72, 0],
-    [71,74,79,74, 71,69,67, 0]
+  const BARS = [
+    {root:48, chord:[60,64,67], mel:[72,76,79,76, 74,72,74, 0]},
+    {root:43, chord:[59,62,67], mel:[71,74,79,74, 76,74,71, 0]},
+    {root:45, chord:[57,60,64], mel:[69,72,76,72, 74,76,74, 0]},
+    {root:41, chord:[57,60,65], mel:[72,69,65,69, 72,74,72, 0]},
+    {root:48, chord:[60,64,67], mel:[79,76,72,76, 81,79,76, 0]},
+    {root:43, chord:[59,62,67], mel:[74,79,83,79, 81,79,74, 0]},
+    {root:45, chord:[57,60,64], mel:[81,76,72,76, 79,81,79, 0]},
+    {root:41, chord:[57,60,65], mel:[77,72,69,72, 76,74,72, 0]}
   ];
-  const SPB = 60/92/2;
-  let ac=null, master=null, musicTimer=null, step=0, tNext=0;
+  const SPB = 60/100/2;
+  let ac=null, master=null, noiseBuf=null, musicTimer=null, step=0, tNext=0;
   function mtof(m){ return 440*Math.pow(2,(m-69)/12); }
-  function note(freq,t,dur,gain,type){
+  function voice(freq,t,dur,gain,type,detune){
     const o=ac.createOscillator(), g=ac.createGain();
     o.type=type||'sine'; o.frequency.value=freq;
+    if(detune) o.detune.value=detune;
     g.gain.setValueAtTime(0.0001,t);
-    g.gain.linearRampToValueAtTime(gain,t+0.014);
+    g.gain.linearRampToValueAtTime(gain,t+0.012);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.06);
+  }
+  function box(m,t,dur,gain){
+    voice(mtof(m), t, dur, gain, 'sine');
+    voice(mtof(m+12), t, dur*0.45, gain*0.3, 'sine');
+    voice(mtof(m), t, dur*0.7, gain*0.14, 'triangle', 7);
+  }
+  function tick(t,gain){
+    if(!noiseBuf){
+      noiseBuf = ac.createBuffer(1, 2048, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    }
+    const s=ac.createBufferSource(), f=ac.createBiquadFilter(), g=ac.createGain();
+    s.buffer=noiseBuf; f.type='highpass'; f.frequency.value=7000;
+    g.gain.setValueAtTime(gain,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.06);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t+0.09);
   }
   function schedule(){
     const ahead = ac.currentTime + 0.3;
     while(tNext < ahead){
-      const bar = Math.floor(step/8) % 4, s = step % 8;
-      const m = MELODY[bar][s];
-      if(m) note(mtof(m), tNext, 0.62, 0.15, 'triangle');
+      const b = BARS[Math.floor(step/8) % BARS.length], s = step % 8;
+      const m = b.mel[s];
+      if(m) box(m, tNext, 0.9, 0.12);
       if(s === 0){
-        CHORDS[bar].forEach(function(c){ note(mtof(c), tNext, 1.7, 0.045, 'sine'); });
-        note(mtof(ROOTS[bar]-12), tNext, 0.9, 0.11, 'sine');
+        b.chord.forEach(function(c){ voice(mtof(c), tNext, 2.1, 0.032, 'sine'); });
+        voice(mtof(b.root), tNext, 1.0, 0.09, 'triangle');
+        voice(mtof(b.mel[0]+12), tNext, 1.3, 0.025, 'sine');
       }
-      if(s === 4) note(mtof(ROOTS[bar]-12), tNext, 0.6, 0.08, 'sine');
-      if(s === 6) note(mtof(MELODY[bar][4]+12), tNext, 0.35, 0.035, 'sine');
+      if(s === 4) voice(mtof(b.root+7), tNext, 0.7, 0.06, 'triangle');
+      if(s % 2 === 1) tick(tNext, 0.018);
       tNext += SPB; step++;
     }
   }
